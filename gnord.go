@@ -1,17 +1,15 @@
-package gnord
+package httptools
 
 import (
 	"net/http"
 	"net/http/cgi"
-	"log"
 	"os"
-	"fmt"
-	"flag"
 	"path/filepath"
 )
 
 type GnordOpts struct {
 	Path string
+	IpHeader string
 }
 
 func GnordHandleFunc(opts *GnordOpts) func (w http.ResponseWriter, r *http.Request) {
@@ -38,8 +36,8 @@ func GnordHandleFunc(opts *GnordOpts) func (w http.ResponseWriter, r *http.Reque
 			cginame := file + ".cgi"
 			_, e = os.Stat(cginame)
 			if (e == nil) {
-				if *iphead != "" {
-					ff := r.Header.Get(*iphead)
+				if opts.IpHeader != "" {
+					ff := r.Header.Get(opts.IpHeader)
 					if ff != "" {
 						r.RemoteAddr = ff
 					}
