@@ -40,16 +40,6 @@ func PiCam(mux *http.ServeMux, path string) {
 
 	go picserve(ch)
 
-	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
-		_, err := ioutil.ReadAll(r.Body)
-		if err == nil {
-			rc := make(chan []byte)
-			ch <- picreq{ch: rc, size: 8}
-			s := <-rc
-			w.Write([]byte(s))
-		}
-	})
-
 	defhdlr := func (suf string, fac int) {
 		mux.HandleFunc(path + suf, func(w http.ResponseWriter, r *http.Request) {
 			_, err := ioutil.ReadAll(r.Body)
@@ -62,6 +52,7 @@ func PiCam(mux *http.ServeMux, path string) {
 		})
 	}
 
+	defhdlr ("", 8 * 9);
 	defhdlr ("/r", 4 * 9);
 	defhdlr ("/s", 2 * 9);
 	defhdlr ("/t", 15);
