@@ -21,7 +21,7 @@ func picserve(ch chan picreq) {
 	for rq := range ch {
 		cmd := exec.Command(
 			"raspistill",
-			"-t", "5",
+			"-t", "1000",
 			"-w", to_s (9 * 4 * rq.size),
 			"-h", to_s (9 * 3 * rq.size),
 			"-mm", "matrix",
