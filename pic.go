@@ -6,7 +6,10 @@ import (
 	"log"
 	"io/ioutil"
 	"os/exec"
+	"flag"
 )
+
+var mmode = flag.String("mm", "matrix", "raspistill measuring mode")
 
 type picreq struct {
 	ch chan []byte
@@ -24,7 +27,7 @@ func picserve(ch chan picreq) {
 			"-t", "1000",
 			"-w", to_s (9 * 4 * rq.size),
 			"-h", to_s (9 * 3 * rq.size),
-			"-mm", "matrix",
+			"-mm", *mmode,
 			"-o", "-")
 		out, err := cmd.Output()
 		if err != nil {
