@@ -12,14 +12,40 @@ type GnordOpts struct {
 	IpHeader string
 }
 
+// https://golang.org/src/net/http/fs.go
+// See notes around about proper URL.Path handling.
+
+// https://cs.opensource.google/go/go/+/refs/tags/go1.17.3:src/net/http/cgi/host.go;l=57
+
 func GnordHandleFunc(opts *GnordOpts) func (w http.ResponseWriter, r *http.Request) {
+
+	do404 := func (w http.ResponseWriter, r *http.Request) {
+		file := filepath.Join(opts.Path, "404")
+		http.ServeFile(w, r, file) // TODO: This returns a 200, not a 404!
+	}
+
+	docgi := func (cginame string, w http.ResponseWriter, r *http.Request) {
+		if opts.IpHeader != "" {
+			ff := r.Header.Get(opts.IpHeader)
+			if ff != "" {
+				r.RemoteAddr = ff
+			}
+		}
+		h := cgi.Handler{
+			Path: cginame,
+			Root: opts.Path,
+		}
+		h.ServeHTTP(w, r)
+	}
+
 	return func (w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
-		file := filepath.Join(opts.Path, filepath.FromSlash(path))
+		fp := filepath.FromSlash(path)
+		file := filepath.Join(opts.Path, fp)
 		ext := filepath.Ext(file)
 		if ext == ".cgi" {
 			// Hide cgi files from plain view
-			http.NotFound(w, r)
+			do404 (w,r)
 			return
 		}
 
@@ -37,18 +63,7 @@ func GnordHandleFunc(opts *GnordOpts) func (w http.ResponseWriter, r *http.Reque
 
 				_, e = os.Stat(cginame)
 				if (e == nil) {
-					// Mostly common code with stuff below.
-					if opts.IpHeader != "" {
-						ff := r.Header.Get(opts.IpHeader)
-						if ff != "" {
-							r.RemoteAddr = ff
-						}
-					}
-					h := cgi.Handler{
-						Path: cginame,
-						Root: opts.Path,
-					}
-					h.ServeHTTP(w, r)
+					docgi (cginame, w, r)
 					return
 				}
 
@@ -62,20 +77,27 @@ func GnordHandleFunc(opts *GnordOpts) func (w http.ResponseWriter, r *http.Reque
 
 		if os.IsNotExist(e) {
 			cginame := file + ".cgi"
-			_, e = os.Stat(cginame)
+			_, e := os.Stat(cginame)
 			if (e == nil) {
-				if opts.IpHeader != "" {
-					ff := r.Header.Get(opts.IpHeader)
-					if ff != "" {
-						r.RemoteAddr = ff
-					}
-				}
-				h := cgi.Handler{
-					Path: cginame,
-					Root: opts.Path,
-				}
-				h.ServeHTTP(w, r)
+				docgi (cginame, w, r)
 				return
+			}
+			//if (os.IsNotExist(e)) {
+			//	do404(w,r)
+			//	return
+			//}
+
+			for {
+				fd := filepath.Dir(fp)
+				if (fd == fp) { break }
+				fp = fd
+
+				cginame := filepath.Join(opts.Path, fp) + "/index.cgi"
+				_, e := os.Stat(cginame)
+				if (e == nil) {
+					docgi (cginame, w, r)
+					return
+				}
 			}
 		}
 
