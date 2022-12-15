@@ -10,6 +10,7 @@ import (
 type GnordOpts struct {
 	Path string
 	IpHeader string
+	CgiPath string
 }
 
 // https://golang.org/src/net/http/fs.go
@@ -47,6 +48,15 @@ func GnordHandleFunc(opts *GnordOpts) func (w http.ResponseWriter, r *http.Reque
 			// Hide cgi files from plain view
 			do404 (w,r)
 			return
+		}
+
+		if (opts.CgiPath != "") {
+			cginame := filepath.Join(opts.CgiPath, fp)+".cgi"
+			_, e := os.Stat(cginame)
+			if (e == nil) {
+				docgi (cginame, w, r)
+				return
+			}
 		}
 
 		f, e := os.Lstat(file)
